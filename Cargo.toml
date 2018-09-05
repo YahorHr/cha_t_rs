@@ -1,0 +1,6 @@
+[package]
+name = "chattt"
+version = "0.1.0"
+authors = ["Yahor Hryniuk <hryniuk.yahor@gmail.com>"]
+
+[dependencies]
