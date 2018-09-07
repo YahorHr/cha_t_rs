@@ -6,6 +6,11 @@ use std::env;
 use std::sync::mpsc::{Sender, Receiver};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+
+extern crate chrono;
+use chrono::Local;
+
 
 const MSG_BUF_LEN: usize = 4096;
 
@@ -18,30 +23,6 @@ enum Event {
     Disconnected{
         sock_addr: SocketAddr,
     },
-}
-
-fn handle_client(mut stream: TcpStream, tx: Sender<Event>) {
-
-    let mut buf = [0; MSG_BUF_LEN];
-    let msg_len = stream.read(&mut buf).unwrap();
-    let client_name = str::from_utf8(&buf[0..msg_len]).unwrap().to_string();
-    
-    loop {
-        let msg_len = stream.read(&mut buf).unwrap();
-        if msg_len == 0 {
-            break;
-        }
-        let event = Event::Message {
-            name: client_name.clone(),
-            text: str::from_utf8(&buf[0.. msg_len]).unwrap().to_string(),
-            sock_addr: stream.peer_addr().unwrap(),
-        };
-        let _ = tx.send(event);
-    }
-    let event = Event::Disconnected {
-        sock_addr: stream.peer_addr().unwrap(),
-    };
-    let _ = tx.send(event);
 }
 
 fn main() {
@@ -72,7 +53,10 @@ fn main() {
     }
 }
 
+// server part
+
 fn start_server() -> Result<(), std::io::Error> {
+    println!("{:?}", SystemTime::now());
     println!("Starting server...");
     
     let clients: HashMap<SocketAddr, TcpStream> = HashMap::new();
@@ -96,12 +80,14 @@ fn start_server() -> Result<(), std::io::Error> {
                     }
                     match m_guard.get(addr) {
                         Some(mut stream) => {
+                            let time = Local::now();
+
                             let mut answer = String::new();
+                            answer += &time.format("[%H:%M:%S] ").to_string();
                             answer += &name;
                             answer += " > ";
                             answer += &text;
                             let _ = stream.write(answer.as_bytes());
-                        
                         },
                         None => (),
                     }
@@ -146,10 +132,41 @@ fn add_client(stream: TcpStream, tx: &Sender<Event>, arc: &Arc<Mutex<HashMap<Soc
         m_guard.insert(sock_addr, stream);
     }
     std::thread::spawn(move || {
-        handle_client(stream_cp, tx_copy);
+        match handle_client(&stream_cp, &tx_copy) {
+            Ok(_) => {},
+            Err(_) => {
+                let event = Event::Disconnected {
+                    sock_addr: stream_cp.peer_addr().unwrap(),
+                };
+                let _ = tx_copy.send(event);
+            }
+        }
     });
     Ok(())
 }
+
+fn handle_client(mut stream: &TcpStream, tx: &Sender<Event>) -> Result<(), ::io::Error> {
+
+    let mut buf = [0; MSG_BUF_LEN];
+    let msg_len = stream.read(&mut buf)?;
+    let client_name = str::from_utf8(&buf[0..msg_len]).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?.to_string();
+    
+    loop {
+        let msg_len = stream.read(&mut buf).unwrap();
+        if msg_len == 0 {
+            break;
+        }
+        let event = Event::Message {
+            name: client_name.clone(),
+            text: str::from_utf8(&buf[0.. msg_len]).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?.to_string(),
+            sock_addr: stream.peer_addr()?,
+        };
+        let _ = tx.send(event);
+    }
+    Err(io::Error::new(io::ErrorKind::Other, "msg_len == 0"))
+}
+
+// client part
 
 fn start_client() -> io::Result<()> {
     let addr = "127.0.0.1:5858";
