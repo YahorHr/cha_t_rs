@@ -1,7 +1,6 @@
 use std::net::{TcpListener, TcpStream, SocketAddr};
 use std::process::exit;
-use std::io::{self, Read, Write, stdin};
-use std::str;
+use std::io::{self, Read, Write, stdin, BufReader, BufRead};
 use std::env;
 use std::sync::mpsc::{Sender, Receiver};
 use std::collections::HashMap;
@@ -145,23 +144,28 @@ fn add_client(stream: TcpStream, tx: &Sender<Event>, arc: &Arc<Mutex<HashMap<Soc
     Ok(())
 }
 
-fn handle_client(mut stream: &TcpStream, tx: &Sender<Event>) -> Result<(), ::io::Error> {
+fn handle_client(stream: &TcpStream, tx: &Sender<Event>) -> Result<(), ::io::Error> {
 
-    let mut buf = [0; MSG_BUF_LEN];
-    let msg_len = stream.read(&mut buf)?;
-    let client_name = str::from_utf8(&buf[0..msg_len]).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?.to_string();
-    
+    let mut buf_reader = BufReader::new(stream);
+    //let mut buf = [0; MSG_BUF_LEN];
+    //let msg_len = stream.read(&mut buf)?;
+    //let client_name = str::from_utf8(&buf[0..msg_len]).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?.to_string();
+    let mut client_name = String::new();
+    let mut text_msg = String::new();
+    buf_reader.read_line(&mut client_name)?;
+
     loop {
-        let msg_len = stream.read(&mut buf).unwrap();
-        if msg_len == 0 {
+        buf_reader.read_line(&mut text_msg)?;
+        if text_msg.len() == 0 {
             break;
         }
         let event = Event::Message {
-            name: client_name.clone(),
-            text: str::from_utf8(&buf[0.. msg_len]).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?.to_string(),
+            name: client_name.trim().to_string().clone(),
+            text: text_msg.trim().to_string().clone(),
             sock_addr: stream.peer_addr()?,
         };
         let _ = tx.send(event);
+        text_msg.clear();
     }
     Err(io::Error::new(io::ErrorKind::Other, "msg_len == 0"))
 }
@@ -193,12 +197,12 @@ fn start_client() -> io::Result<()> {
         }
         println!("name length must be more then 3 characters. Try again")
     }
-    let _ = stream.write(buf.trim().as_bytes());
-
+    let _ = writeln!(&mut stream, "{}", buf.trim());
     loop {
         buf.clear();
         let _ = stdin().read_line(&mut buf);
-        let _ = stream.write(buf.trim().as_bytes());
+        let _ = writeln!(&mut stream, "{}", buf.trim());
+        //let _ = stream.writeln(buf.trim().as_bytes());
     }
 }
 
