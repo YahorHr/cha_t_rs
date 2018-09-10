@@ -157,8 +157,8 @@ fn handle_client(stream: &TcpStream, tx: &Sender<Event>) -> Result<(), ::io::Err
             break;
         }
         let event = Event::Message {
-            name: client_name.trim().to_string().clone(),
-            text: text_msg.trim().to_string().clone(),
+            name: client_name.trim().to_string(),
+            text: text_msg.trim().to_string(),
             sock_addr: stream.peer_addr()?,
         };
         let _ = tx.send(event);
