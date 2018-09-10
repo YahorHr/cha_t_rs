@@ -147,9 +147,6 @@ fn add_client(stream: TcpStream, tx: &Sender<Event>, arc: &Arc<Mutex<HashMap<Soc
 fn handle_client(stream: &TcpStream, tx: &Sender<Event>) -> Result<(), ::io::Error> {
 
     let mut buf_reader = BufReader::new(stream);
-    //let mut buf = [0; MSG_BUF_LEN];
-    //let msg_len = stream.read(&mut buf)?;
-    //let client_name = str::from_utf8(&buf[0..msg_len]).map_err(|err| io::Error::new(io::ErrorKind::Other, err))?.to_string();
     let mut client_name = String::new();
     let mut text_msg = String::new();
     buf_reader.read_line(&mut client_name)?;
@@ -202,7 +199,6 @@ fn start_client() -> io::Result<()> {
         buf.clear();
         let _ = stdin().read_line(&mut buf);
         let _ = writeln!(&mut stream, "{}", buf.trim());
-        //let _ = stream.writeln(buf.trim().as_bytes());
     }
 }
 
