@@ -129,15 +129,12 @@ fn start_server(sock_addr: String) -> Result<(), std::io::Error> {
                     if addr == &sock_addr {
                         continue;
                     }
-                    //match m_guard.get(addr) {
+                    
                     if let Some(mut stream) = m_guard.get(addr) {
                         let time = Local::now();
 
-                        let mut answer = String::new();
-                        answer += &time.format("[%H:%M:%S] ").to_string();
-                        answer += &name;
-                        answer += " > ";
-                        answer += &text;
+                        let current_time = &time.format("[%H:%M:%S]");
+                        let answer = format!("{} {} > {}", current_time, name, text);
                         let _ = stream.write(answer.as_bytes());
                     }
                 }
