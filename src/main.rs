@@ -15,6 +15,12 @@ use getopts::Options;
 
 
 const MSG_BUF_LEN: usize = 4096;
+const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+const NAME: &'static str = env!("CARGO_PKG_NAME");
+const AUTHOR: &'static str = env!("CARGO_PKG_AUTHORS");
+const DESCRIPTION: &'static str = env!("CARGO_PKG_DESCRIPTION");
+const HOMEPAGE: &'static str = env!("CARGO_PKG_HOMEPAGE");
+
 
 enum Event {
     Message{
@@ -29,6 +35,11 @@ enum Event {
 
 fn print_usage(prog: &str, opts: &Options) {
     let brief = format!("Usage: {} [options]", prog);
+    println!("{} {}", NAME, VERSION);
+    println!("{}", AUTHOR);
+    println!("{}", DESCRIPTION);
+    println!("{}", HOMEPAGE);
+
     println!("{}", opts.usage(&brief));
 }
 

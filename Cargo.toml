@@ -2,6 +2,12 @@
 name = "cha_t_rs"
 version = "0.1.0"
 authors = ["Yahor Hryniuk <hryniuk.yahor@gmail.com>"]
+description = """
+Simple chat in rust.
+"""
+homepage = "https://github.com/YahorHr/cha_t_rs"
+readme = "README.md"
+license = "MIT"
 
 [dependencies]
 chrono = "0.4"

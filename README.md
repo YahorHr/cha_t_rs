@@ -7,11 +7,17 @@ This project is a simple example tcp chat in Rust.
 You can start chat in server mode:
 
 ```
-./cha_t_rs s
+./cha_t_rs -s
 ```
 
 also you can start chat in client mode:
 
 ```
-/cha_t_rs c
+./cha_t_rs -c
+```
+
+You can setup ip and port using:
+
+```
+./cha_t_rs -s -a [ip] -p [port]
 ```
