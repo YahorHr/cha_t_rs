@@ -5,3 +5,4 @@ authors = ["Yahor Hryniuk <hryniuk.yahor@gmail.com>"]
 
 [dependencies]
 chrono = "0.4"
+getopts = "0.2"

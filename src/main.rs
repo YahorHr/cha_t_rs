@@ -10,6 +10,9 @@ use std::time::SystemTime;
 extern crate chrono;
 use chrono::Local;
 
+extern crate getopts;
+use getopts::Options;
+
 
 const MSG_BUF_LEN: usize = 4096;
 
@@ -24,37 +27,86 @@ enum Event {
     },
 }
 
+fn print_usage(prog: &str, opts: Options) {
+    let brief = format!("Usage: {} [options]", prog);
+    println!("{}", opts.usage(&brief));
+}
+
 fn main() {
-    
-    match env::args().last() {
-        Some(arg) => {
-            if arg == "s" {
-                match start_server() {
-                    Ok(_) => {},
-                    Err(e) => {
-                        println!("server error: {}", e);
-                    },
-                } 
-            } else if arg == "c" {
-                match start_client() {
-                    Ok(_) => {},
-                    Err(_) => {
-                        println!("client error");
-                        exit(1);
-                    },
-                } 
-            } else {
-                println!("wrong argument: use 'c' for start client, 's' for start server" );
-                exit(1);
-            }
+    let mut ip = String::from("[::]");
+    let mut port = String::from("5858");
+
+    let args: Vec<String> = env::args().collect();
+
+    let mut opts = Options::new();
+    let prog = args[0].clone();
+
+    opts.optflag("h", "help", "Print help menu.");
+    opts.optflag("s", "server", "Start chat in server mode.");
+    opts.optflag("c", "client", "Start chat in client mode.");
+    opts.optopt("a", "address", "ip address. Default: [::]", "<IP>");
+    opts.optopt("p", "port", "port. Default: 5858", "<PORT>");
+
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => m,
+        Err(e) => {
+            println!("{}", e.to_string());
+            exit(1);
         },
-        None => {},
+    };
+
+    if args.len() < 2 {
+        println!("Wrong arguments. For more details use -h or --help. Please try again.");
+        exit(1);
+    }
+
+    if matches.opt_present("h") {
+        print_usage(&prog, opts);
+        exit(0);
+    }
+
+    if matches.opt_present("s") && matches.opt_present("c") {
+        println!("Chat can be started only in one mode (server or client). For more details use -h or --help. Please try again.");
+        exit(1);
+    }
+
+    if matches.opt_present("a") {
+        ip = match matches.opt_str("a") {
+            Some(a) => a.to_string(),
+            None => String::from("[::]"),
+        }
+    }
+
+    if matches.opt_present("p") {
+        port = match matches.opt_str("p") {
+            Some(p) => p.to_string(),
+            None => String::from("5858"),
+        }
+    }
+
+    let sock_addr = format!("{}:{}", ip, port);
+
+    if matches.opt_present("s") {
+        match start_server(sock_addr) {
+                Ok(_) => {},
+                Err(e) => {
+                    println!("server error: {}", e);
+            },
+        } 
+    } else if matches.opt_present("c") {
+        match start_client(sock_addr) {
+            Ok(_) => {},
+                Err(_) => {
+                    println!("client error");
+                    exit(1);
+            },
+        } 
     }
 }
 
 // server part
 
-fn start_server() -> Result<(), std::io::Error> {
+fn start_server(sock_addr: String) -> Result<(), std::io::Error> {
     println!("{:?}", SystemTime::now());
     println!("Starting server...");
     
@@ -101,7 +153,7 @@ fn start_server() -> Result<(), std::io::Error> {
         }
     });
 
-    let listener = match TcpListener::bind("[::]:5858") {
+    let listener = match TcpListener::bind(sock_addr) {
         Ok(stream) => stream,
         Err(_) => {
             println!("error create new listener");
@@ -169,9 +221,8 @@ fn handle_client(stream: &TcpStream, tx: &Sender<Event>) -> Result<(), ::io::Err
 
 // client part
 
-fn start_client() -> io::Result<()> {
-    let addr = "127.0.0.1:5858";
-    let mut stream = TcpStream::connect(addr)?;
+fn start_client(sock_addr: String) -> io::Result<()> {
+    let mut stream = TcpStream::connect(sock_addr)?;
     let mut stream_rv = stream.try_clone()?;
     let mut buf = String::new();
     
