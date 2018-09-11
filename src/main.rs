@@ -27,7 +27,7 @@ enum Event {
     },
 }
 
-fn print_usage(prog: &str, opts: Options) {
+fn print_usage(prog: &str, opts: &Options) {
     let brief = format!("Usage: {} [options]", prog);
     println!("{}", opts.usage(&brief));
 }
@@ -44,8 +44,8 @@ fn main() {
     opts.optflag("h", "help", "Print help menu.");
     opts.optflag("s", "server", "Start chat in server mode.");
     opts.optflag("c", "client", "Start chat in client mode.");
-    opts.optopt("a", "address", "ip address. Default: [::]", "<IP>");
-    opts.optopt("p", "port", "port. Default: 5858", "<PORT>");
+    opts.optopt("a", "address", "Ip address. Default: [::]", "<IP>");
+    opts.optopt("p", "port", "Port. Default: 5858", "<PORT>");
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -61,7 +61,7 @@ fn main() {
     }
 
     if matches.opt_present("h") {
-        print_usage(&prog, opts);
+        print_usage(&prog, &opts);
         exit(0);
     }
 
@@ -75,13 +75,13 @@ fn main() {
             Some(a) => a.to_string(),
             None => String::from("[::]"),
         }
-    }
-
-    if matches.opt_present("p") {
+    } else if matches.opt_present("p") {
         port = match matches.opt_str("p") {
             Some(p) => p.to_string(),
             None => String::from("5858"),
         }
+    } else {
+         println!("Chat can be started in -c or -s mode. For more details use -h or --help. Please try again.");
     }
 
     let sock_addr = format!("{}:{}", ip, port);
@@ -129,18 +129,16 @@ fn start_server(sock_addr: String) -> Result<(), std::io::Error> {
                     if addr == &sock_addr {
                         continue;
                     }
-                    match m_guard.get(addr) {
-                        Some(mut stream) => {
-                            let time = Local::now();
+                    //match m_guard.get(addr) {
+                    if let Some(mut stream) = m_guard.get(addr) {
+                        let time = Local::now();
 
-                            let mut answer = String::new();
-                            answer += &time.format("[%H:%M:%S] ").to_string();
-                            answer += &name;
-                            answer += " > ";
-                            answer += &text;
-                            let _ = stream.write(answer.as_bytes());
-                        },
-                        None => (),
+                        let mut answer = String::new();
+                        answer += &time.format("[%H:%M:%S] ").to_string();
+                        answer += &name;
+                        answer += " > ";
+                        answer += &text;
+                        let _ = stream.write(answer.as_bytes());
                     }
                 }
                     },
@@ -176,7 +174,7 @@ fn start_server(sock_addr: String) -> Result<(), std::io::Error> {
 fn add_client(stream: TcpStream, tx: &Sender<Event>, arc: &Arc<Mutex<HashMap<SocketAddr, TcpStream>>>) -> Result<(), ::io::Error> {
     let tx_copy = tx.clone();
     let stream_cp = stream.try_clone()?;
-    let sock_addr = stream.peer_addr()?.clone();
+    let sock_addr = stream.peer_addr()?;
     println!("client connectded: {}", sock_addr);
     {   
         let mut m_guard = arc.lock().unwrap();
@@ -205,7 +203,7 @@ fn handle_client(stream: &TcpStream, tx: &Sender<Event>) -> Result<(), ::io::Err
 
     loop {
         buf_reader.read_line(&mut text_msg)?;
-        if text_msg.len() == 0 {
+        if text_msg.is_empty() {
             break;
         }
         let event = Event::Message {
